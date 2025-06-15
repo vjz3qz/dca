@@ -42,9 +42,7 @@ COINBASE_API_KEY=organizations/your-org-id/apiKeys/your-key-id
 COINBASE_API_SECRET="-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----"
 ```
 
-````
-
-> ⚠️ The key must be from the **Advanced Trade Cloud API**, not the CDP Wallet API.
+> ⚠️ The key must use the **ECDSA** Signature Algorithm. This may be updated in the future.
 
 ---
 
@@ -120,4 +118,7 @@ Open an issue or ping [@vjz3qz](https://github.com/vjz3qz) if you have trouble u
 ```
 
 ```
-````
+
+```
+
+```
