@@ -114,11 +114,3 @@ MIT
 ## 🙋‍♂️ Questions?
 
 Open an issue or ping [@vjz3qz](https://github.com/vjz3qz) if you have trouble using the bot or want help adapting it for your use case.
-
-```
-
-```
-
-```
-
-```
