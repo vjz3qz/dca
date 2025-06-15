@@ -7,7 +7,7 @@ It places daily limit orders to buy BTC at a 2% discount from the spot price and
 - ✅ Time-in-force logic: cancels stale limit orders after 24 hours
 - ✅ Fallback mechanism: places a market order if 3 recent limit orders were unfilled
 - ✅ Persistent order history with fill status tracking
-- ✅ Environment-variable-based secrets loading using `.env`
+- ✅ Track all order states in `order_history.json` (if running locally)
 
 ---
 
@@ -59,13 +59,6 @@ pip install -r requirements.txt
 ```bash
 python dca.py
 ```
-
-> The bot will:
->
-> - Cancel unfilled limit orders older than 24 hours
-> - Check if fallback to market buy is needed
-> - Place a limit order 2% below spot price
-> - Track all order states in `order_history.json`
 
 ---
 
