@@ -1,104 +1,109 @@
-Here you go:
-
----
-
-## 📄 `README.md`
-
-````markdown
 # 🪙 Coinbase DCA Bot (Advanced Trade API)
 
-This is an automated DCA (Dollar-Cost Averaging) bot for Coinbase using the [coinbase-advancedtrade-python](https://github.com/rhettre/coinbase-advancedtrade-python) SDK.  
-It supports:
+This bot automates a Dollar-Cost Averaging (DCA) strategy on Coinbase using the official [`coinbase-advanced-py`](https://pypi.org/project/coinbase-advanced-py/) SDK.
 
-- 🔁 Daily limit buy orders at a discount (via price multiplier)
-- 🕒 Time-in-force: auto-cancels stale limit orders after X hours
-- 🧯 Fallback: market buy if N consecutive limit orders remain unfilled
-- 🤖 Full GitHub Actions automation
+It places daily limit orders to buy BTC at a 2% discount from the spot price and includes:
 
----
-
-## 🚀 Features
-
-- Limit order at X% below spot price (e.g., 2% discount)
-- Auto-cancel stale unfilled orders (default: 24h)
-- After N days of failed limit orders (default: 3), fallback to market buy
-- JSON-based order history tracking (can be swapped for database)
-- Designed for daily GitHub Actions execution
+- ✅ Time-in-force logic: cancels stale limit orders after 24 hours
+- ✅ Fallback mechanism: places a market order if 3 recent limit orders were unfilled
+- ✅ Persistent order history with fill status tracking
+- ✅ Environment-variable-based secrets loading using `.env`
 
 ---
 
-## 🔧 Setup Instructions
+## 📁 File Overview
 
-### 1. Clone this repo
+| File                 | Purpose                                                       |
+| -------------------- | ------------------------------------------------------------- |
+| `dca.py`             | Main script that runs the bot logic                           |
+| `.env.example`       | Sample environment variables file for API credentials         |
+| `order_history.json` | Local persistent storage for tracking order status            |
+| `requirements.txt`   | Python dependencies (`python-dotenv`, `coinbase-advanced-py`) |
+| `.github/workflows/` | _(Optional)_ GitHub Actions automation (not included here)    |
 
-```bash
-git clone https://github.com/vjz3qz/dca.git
-cd dca
+---
+
+## ⚙️ Prerequisites
+
+- Python 3.9 or higher
+- A Coinbase **Advanced Trade** API key with:
+  - Format: `organizations/{org_id}/apiKeys/{key_id}`
+  - EC Private Key in PEM format
+
+---
+
+## 🔐 Environment Setup
+
+1. Duplicate `.env.example` → `.env`
+2. Fill in your values:
+
+```env
+COINBASE_API_KEY=organizations/your-org-id/apiKeys/your-key-id
+COINBASE_API_SECRET="-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----"
 ```
+
 ````
 
-### 2. Install dependencies
+> ⚠️ The key must be from the **Advanced Trade Cloud API**, not the CDP Wallet API.
+
+---
+
+## 🚀 Running the Bot
+
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set environment variables
-
-Create a `.env` file (or set env vars manually) using the example below.
-
-### 4. Run locally
+### 2. Run it manually
 
 ```bash
 python dca.py
 ```
 
-### 5. Or deploy via GitHub Actions
-
-1. Go to **Repo → Settings → Secrets and Variables → Actions**
-2. Add the following secrets:
-
-   - `COINBASE_API_KEY`
-   - `COINBASE_API_SECRET`
-
-3. Push to main and GitHub Actions will run daily
+> The bot will:
+>
+> - Cancel unfilled limit orders older than 24 hours
+> - Check if fallback to market buy is needed
+> - Place a limit order 2% below spot price
+> - Track all order states in `order_history.json`
 
 ---
 
-## 🔐 Environment Variables
+## 🧪 Example Output
 
-See [.env.example](.env.example)
+```
+✅ Limit order placed at $42834.21 for 0.00023 BTC.
+```
 
-- `COINBASE_API_KEY`: Your Coinbase Advanced Trade API key (e.g., `organizations/{org_id}/apiKeys/{key_id}`)
-- `COINBASE_API_SECRET`: Your EC private key in PEM format
+or
 
----
-
-## ⚙️ Configuration (inside `dca.py`)
-
-| Variable           | Description                            | Default  |
-| ------------------ | -------------------------------------- | -------- |
-| `PRICE_MULTIPLIER` | Limit price as % of current spot       | `"0.98"` |
-| `TIF_HOURS`        | Time-in-force cancel threshold (hours) | `24`     |
-| `FALLBACK_DAYS`    | Days to fallback to market buy         | `3`      |
-| `BUY_AMOUNT`       | Amount in USD to invest per trade      | `"10"`   |
+```
+❌ Limit order failed: {'error': 'INSUFFICIENT_FUND', ...}
+```
 
 ---
 
-## 📁 Files
+## 🛠 Configuration Options
 
-- `dca.py` — main trading logic
-- `order_history.json` — local file tracking past orders
-- `.github/workflows/dca.yml` — GitHub Actions automation
-- `requirements.txt` — Python dependency list
+You can edit these constants in `dca.py` to customize behavior:
+
+| Constant         | Purpose                                         | Default |
+| ---------------- | ----------------------------------------------- | ------- |
+| `QUOTE_AMOUNT`   | How much USD to invest per trade                | `1`     |
+| `PRICE_DISCOUNT` | Limit order % below spot price (0.98 = 2%)      | `0.98`  |
+| `TIF_HOURS`      | Cancel limit orders older than this             | `24`    |
+| `FALLBACK_DAYS`  | Fallback to market order if unfilled for N days | `3`     |
 
 ---
 
-## 📌 Notes
+## 📦 Future Improvements
 
-- This script assumes trades are made in `BTC-USDC`. You can change this in `dca.py`.
-- Fallback logic checks if any limit orders were filled in last N days (basic implementation — can be upgraded to query actual fills).
-- This is a basic bot — use responsibly and at your own risk.
+- [ ] GitHub Actions or AWS Lambda deployment
+- [ ] Multi-coin support (ETH, SOL, etc.)
+- [ ] Alerts via email or Slack
+- [ ] Integration with Supabase or Google Sheets for metrics
 
 ---
 
@@ -106,18 +111,13 @@ See [.env.example](.env.example)
 
 MIT
 
-````
-
 ---
 
-## 📄 `.env.example`
+## 🙋‍♂️ Questions?
 
-```dotenv
-# Coinbase Advanced Trade API Key
-COINBASE_API_KEY=organizations/your-org-id/apiKeys/your-key-id
+Open an issue or ping [@vjz3qz](https://github.com/vjz3qz) if you have trouble using the bot or want help adapting it for your use case.
 
-# Coinbase Advanced Trade EC PRIVATE KEY
-COINBASE_API_SECRET="-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----\n"
+```
+
+```
 ````
-
----
