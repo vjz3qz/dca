@@ -1,8 +1,7 @@
 import os
 import json
-import time
 import math
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from uuid import uuid4
 from coinbase.rest import RESTClient
 from dotenv import load_dotenv
@@ -12,7 +11,7 @@ load_dotenv()
 
 ORDER_HISTORY_FILE = "order_history.json"
 PRODUCT_ID = "BTC-USD"
-QUOTE_AMOUNT = "10"  # USD
+QUOTE_AMOUNT = "1"  # USD
 PRICE_DISCOUNT = 0.98
 TIF_HOURS = 24
 FALLBACK_DAYS = 3
@@ -30,22 +29,34 @@ def save_order_history(history):
         json.dump(history, f, indent=2)
 
 
+def update_order_statuses(client, history):
+    """Update status for any order missing a 'filled' key."""
+    for order in history:
+        if "order_id" not in order or "filled" in order:
+            continue
+        try:
+            order_info = client.get_order(order_id=order["order_id"])
+            status = order_info["status"].lower()
+            order["status"] = status
+            order["filled"] = status == "filled"
+        except Exception as e:
+            print(f"Error checking order {order.get('order_id')}: {e}")
+
+
 def main():
-    
     api_key = os.getenv("COINBASE_API_KEY")
     api_secret = os.getenv("COINBASE_API_SECRET")
-
-    print(f"API Key: {api_key}, API Secret: {api_secret}")
-
 
     if not api_key or not api_secret:
         print("Missing credentials.")
         return
 
     client = RESTClient(api_key=api_key, api_secret=api_secret)
-    # now = datetime.now(UTC)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     history = load_order_history()
+
+    # Update status of previous orders
+    update_order_statuses(client, history)
 
     # Step 1: Cancel stale unfilled limit orders
     open_orders = client.list_orders(product_id=PRODUCT_ID, order_status="OPEN")
@@ -59,7 +70,7 @@ def main():
     # Step 2: Check fallback condition
     recent_limit_orders = [
         o for o in history
-        if o["type"] == "limit" and (now - datetime.fromisoformat(o["time"])).days < FALLBACK_DAYS
+        if o["type"] == "limit" and (now - datetime.fromisoformat(o["time"]).replace(tzinfo=timezone.utc)).days < FALLBACK_DAYS
     ]
     any_filled = any(o.get("filled", False) for o in recent_limit_orders)
 
@@ -71,8 +82,15 @@ def main():
                 product_id=PRODUCT_ID,
                 quote_size=QUOTE_AMOUNT
             )
-            print("Fallback: Market buy placed.")
-            history.append({"type": "market", "filled": True, "time": now.isoformat()})
+            if result["success"]:
+                order_id = result["success_response"]["order_id"]
+                print("Fallback: Market buy placed.")
+                history.append({
+                    "type": "market",
+                    "filled": True,
+                    "order_id": order_id,
+                    "time": now.isoformat()
+                })
         except Exception as e:
             print(f"Market buy failed: {e}")
     else:
@@ -89,10 +107,20 @@ def main():
                 base_size=base_size,
                 limit_price=limit_price
             )
-            print(f"Limit order placed at ${limit_price} for {base_size} BTC.")
-            history.append({"type": "limit", "filled": False, "time": now.isoformat()})
+            if result.success:
+                order_id = result.success_response["order_id"]
+                print(f"✅ Limit order placed at ${limit_price} for {base_size} BTC.")
+                history.append({
+                    "type": "limit",
+                    "filled": False,
+                    "order_id": order_id,
+                    "time": now.isoformat()
+                })
+            else:
+                raise RuntimeError(f"❌ Limit order failed: {result.error_response}")
+        
         except Exception as e:
-            print(f"Limit order failed: {e}")
+            print(f"⚠️ Limit order exception: {e}")
 
     save_order_history(history)
 
