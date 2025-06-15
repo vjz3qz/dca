@@ -1,4 +1,4 @@
-# 🪙 Coinbase DCA Bot (Advanced Trade API)
+# 🪙 Coinbase DCA Bot
 
 This bot automates a Dollar-Cost Averaging (DCA) strategy on Coinbase using the official [`coinbase-advanced-py`](https://pypi.org/project/coinbase-advanced-py/) SDK.
 
