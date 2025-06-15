@@ -13,9 +13,13 @@ load_dotenv()
 ORDER_HISTORY_FILE = "order_history.json"
 PRODUCT_ID = "BTC-USD"
 BASE_QUOTE_AMOUNT = 1  # USD
-PRICE_DISCOUNT = 0.98
+# PRICE_DISCOUNT = 0.98
 TIF_HOURS = 24
 FALLBACK_DAYS = 3
+
+# 🪜 Laddered Limit Orders: Split adjusted_quote across tiers
+TIERS = [0.998, 0.996, 0.994, 0.992, 0.985, 0.975, 0.96]  # price levels
+SPLITS = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.10]  # corresponding USD allocations (must sum to 1.0)
 
 def load_order_history():
     if not os.path.exists(ORDER_HISTORY_FILE):
@@ -173,31 +177,38 @@ def main():
         except Exception as e:
             print(f"⚠️ Market buy failed: {e}")
     else:
-        try:
-            limit_price = str(math.floor(current_price * PRICE_DISCOUNT * 100) / 100)
-            base_size = str(round(float(adjusted_quote) / float(limit_price), 6))
-            result = client.limit_order_gtc_buy(
-                client_order_id=str(uuid4()),
-                product_id=PRODUCT_ID,
-                base_size=base_size,
-                limit_price=limit_price
-            )
-            if result.success:
-                order_id = result.success_response["order_id"]
-                print(f"✅ Limit order placed at ${limit_price} for {base_size} BTC.")
-                existing_ids = {o["order_id"] for o in history}
-                if order_id not in existing_ids:
-                    history.append({
-                        "type": "limit",
-                        "filled": False,
-                        "order_id": order_id,
-                        "price": current_price,
-                        "time": now.isoformat()
-                    })
-            else:
-                raise RuntimeError(f"❌ Limit order failed: {result.error_response}")
-        except Exception as e:
-            print(f"❌ Limit order exception: {e}")
+
+        for discount, fraction in zip(TIERS, SPLITS):
+            try:
+                tier_quote = float(adjusted_quote) * fraction
+                limit_price = round(current_price * discount, 2)
+                base_size = round(tier_quote / limit_price, 6)
+
+                result = client.limit_order_gtc_buy(
+                    client_order_id=str(uuid4()),
+                    product_id=PRODUCT_ID,
+                    base_size=str(base_size),
+                    limit_price=str(limit_price)
+                )
+
+                if result.success:
+                    order_id = result.success_response["order_id"]
+                    print(f"✅ Laddered limit order placed: ${limit_price} for {base_size} BTC.")
+                    existing_ids = {o["order_id"] for o in history}
+                    if order_id not in existing_ids:
+                        history.append({
+                            "type": "limit",
+                            "filled": False,
+                            "order_id": order_id,
+                            "price": current_price,
+                            "limit_price": limit_price,
+                            "fraction": fraction,
+                            "time": now.isoformat()
+                        })
+                else:
+                    raise RuntimeError(f"❌ Laddered order failed: {result.error_response}")
+            except Exception as e:
+                print(f"⚠️ Exception placing laddered order at {discount*100:.1f}%: {e}")
 
     save_order_history(history)
 
