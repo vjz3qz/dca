@@ -13,13 +13,13 @@ It places daily limit orders to buy BTC at a 2% discount from the spot price and
 
 ## 📁 File Overview
 
-| File                 | Purpose                                                       |
-| -------------------- | ------------------------------------------------------------- |
-| `dca.py`             | Main script that runs the bot logic                           |
-| `.env.example`       | Sample environment variables file for API credentials         |
-| `order_history.json` | Local persistent storage for tracking order status            |
-| `requirements.txt`   | Python dependencies (`python-dotenv`, `coinbase-advanced-py`) |
-| `.github/workflows/` | _(Optional)_ GitHub Actions automation (not included here)    |
+| File                        | Purpose                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `dca.py`                    | Main script that runs the bot logic                           |
+| `.env.example`              | Sample environment variables file for API credentials         |
+| `order_history.json`        | Local persistent storage for tracking order status            |
+| `requirements.txt`          | Python dependencies (`python-dotenv`, `coinbase-advanced-py`) |
+| `.github/workflows/dca.yml` | GitHub Actions automation script for scheduled runs           |
 
 ---
 
@@ -32,7 +32,7 @@ It places daily limit orders to buy BTC at a 2% discount from the spot price and
 
 ---
 
-## 🔐 Environment Setup
+## 🔐 Environment Setup (Local)
 
 1. Duplicate `.env.example` → `.env`
 2. Fill in your values:
@@ -46,7 +46,7 @@ COINBASE_API_SECRET="-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KE
 
 ---
 
-## 🚀 Running the Bot
+## 🚀 Run Locally
 
 ### 1. Install dependencies
 
@@ -54,7 +54,7 @@ COINBASE_API_SECRET="-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KE
 pip install -r requirements.txt
 ```
 
-### 2. Run it manually
+### 2. Run the bot
 
 ```bash
 python dca.py
@@ -66,6 +66,67 @@ python dca.py
 > - Check if fallback to market buy is needed
 > - Place a limit order 2% below spot price
 > - Track all order states in `order_history.json`
+
+---
+
+## ☁️ Deploy as a GitHub Actions Scheduled Job
+
+### 1. Add GitHub Secrets
+
+In your repo:
+
+- Go to **Settings → Secrets and Variables → Actions**
+- Add the following secrets:
+
+  - `COINBASE_API_KEY`
+  - `COINBASE_API_SECRET`
+
+### 2. Create workflow file: `.github/workflows/dca.yml`
+
+```yaml
+name: Coinbase DCA Bot
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # Daily at 9 AM Eastern
+  workflow_dispatch:
+
+jobs:
+  run-dca:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run DCA bot
+        env:
+          COINBASE_API_KEY: ${{ secrets.COINBASE_API_KEY }}
+          COINBASE_API_SECRET: ${{ secrets.COINBASE_API_SECRET }}
+        run: python dca.py
+```
+
+### 3. Push your changes
+
+```bash
+git add .
+git commit -m "Add GitHub Actions workflow"
+git push origin main
+```
+
+### 4. Trigger manually or wait for daily run
+
+Go to the **Actions tab** in GitHub and either wait for the scheduled time or click **“Run workflow”** to test.
 
 ---
 
@@ -83,7 +144,7 @@ or
 
 ---
 
-## 🛠 Configuration Options
+## 🛠 Configuration Options (inside `dca.py`)
 
 You can edit these constants in `dca.py` to customize behavior:
 
@@ -98,10 +159,9 @@ You can edit these constants in `dca.py` to customize behavior:
 
 ## 📦 Future Improvements
 
-- [ ] GitHub Actions or AWS Lambda deployment
 - [ ] Multi-coin support (ETH, SOL, etc.)
-- [ ] Alerts via email or Slack
-- [ ] Integration with Supabase or Google Sheets for metrics
+- [ ] Slack/email notifications on fallback
+- [ ] Logging to Google Sheets or Supabase
 
 ---
 
