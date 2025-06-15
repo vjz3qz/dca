@@ -19,3 +19,5 @@ test.py
 promptlib/
 *.log
 !requirements.txt
+.env
+order_history.json
