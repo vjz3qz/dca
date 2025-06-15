@@ -11,9 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ORDER_HISTORY_FILE = "order_history.json"
-PRODUCT_ID = "BTC-USD"
+PRODUCT_ID = "BTC-USDC"
 BASE_QUOTE_AMOUNT = 1  # USD
-# PRICE_DISCOUNT = 0.98
 TIF_HOURS = 24
 FALLBACK_DAYS = 3
 
@@ -38,7 +37,6 @@ def save_order_history(history):
     os.replace(tmp_file, ORDER_HISTORY_FILE)
 
 def update_order_statuses(client, history):
-    """Update status for any order missing a 'filled' key."""
     for order in history:
         if "order_id" not in order or "filled" in order:
             continue
@@ -114,7 +112,7 @@ def main():
     # Update status of previous orders
     update_order_statuses(client, history)
 
-    # Step 1: Cancel stale unfilled limit orders
+    # Cancel stale open limit orders
     open_orders = client.list_orders(product_id=PRODUCT_ID, order_status="OPEN")
     for order in open_orders.orders:
         created_time = datetime.fromisoformat(order.created_time.replace("Z", "+00:00"))
@@ -123,7 +121,7 @@ def main():
             client.cancel_orders(order_ids=[order.order_id])
             print(f"Canceled stale order: {order.order_id}")
 
-    # Step 2: Determine last filled buy price
+    # Get last filled buy price
     filled_orders = get_all_orders(client, PRODUCT_ID, "FILLED")
     buy_fills = [o for o in filled_orders if o.side == "BUY"]
 
@@ -134,11 +132,10 @@ def main():
         print("⚠️ Could not determine last filled buy price. Falling back to market price.")
         last_price = safe_get_price(client, PRODUCT_ID)
 
-    # Step 3: Get current market price and adjust quote
     current_price = safe_get_price(client, PRODUCT_ID)
     adjusted_quote = str(calculate_adjusted_quote(current_price, last_price, BASE_QUOTE_AMOUNT))
 
-    # Step 4: Check fallback condition using only recent OPEN and FILLED limit buys
+    # Get recent limit buys (open or filled)
     open_orders = get_all_orders(client, PRODUCT_ID, "OPEN")
     filled_orders = get_all_orders(client, PRODUCT_ID, "FILLED")
 
@@ -156,8 +153,9 @@ def main():
             print(f"⚠️ Skipping malformed order: {e}")
 
     any_filled = any(o.status == "FILLED" for o in recent_limit_buys)
+    recent_days = set(o.created_time[:10] for o in recent_limit_buys)
 
-    if not any_filled and len(recent_limit_buys) >= FALLBACK_DAYS:
+    if not any_filled and len(recent_days) >= FALLBACK_DAYS:
         try:
             result = client.market_order_buy(
                 client_order_id=str(uuid4()),
@@ -177,7 +175,6 @@ def main():
         except Exception as e:
             print(f"⚠️ Market buy failed: {e}")
     else:
-
         for discount, fraction in zip(TIERS, SPLITS):
             try:
                 tier_quote = float(adjusted_quote) * fraction
