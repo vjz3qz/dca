@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ORDER_HISTORY_FILE = "order_history.json"
-PRODUCT_ID = "BTC-USDC"
-BASE_QUOTE_AMOUNT = 1  # USD
+PRODUCT_ID = "BTC-USD"
+BASE_QUOTE_AMOUNT = 2  # USD
 TIF_HOURS = 24
 FALLBACK_DAYS = 3
 
